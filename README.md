@@ -1,4 +1,12 @@
-# 🦡 ByteBadger - Text Cleanup Tool
+# <p align="center">
+  <img src="https://raw.githubusercontent.com/habanada/ByteBadger/refs/heads/main/bytebadger.jpg" 
+       alt="ByteBadger Logo" width="300">
+</p>
+
+<p align="center">
+  <em>ByteBadger – Bite by byte, from mess to bright.</em>
+</p>
+ ByteBadger - Text Cleanup Tool
 
 > **Tough on junk. Gentle on meaning.** 
 > Bite by byte, from mess to bright.
