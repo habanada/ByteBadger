@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<!--
+  ByteBadger - Text Cleanup Tool
+  Version: 1.0
+  Author: Selahattin Erkoc (https://github.com/habanada)
+  Year: 2025
+
+  License: Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+  https://creativecommons.org/licenses/by-nc/4.0/
+
+  You are free to use, share, and modify this software for non-commercial purposes only.
+  Commercial use requires explicit permission from the author.
+  Attribution is required: mention "ByteBadger by Selahattin Erkoc" with a link to the GitHub repository.
+
+  Includes the "franc" language detection library by Titus Wormer (MIT License).
+  https://github.com/wooorm/franc
+
+  © 2025 Selahattin Erkoc. All rights reserved.
+-->
+
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ByteBadger - Tough on junk. Gentle on meaning.</title>
+<style>
+body{font-family:Arial,sans-serif;background:#1a191f;color:#eee;margin:20px}
+textarea{
+  width:100%;
+  height:200px;
+  background:#2e2e2e;
+  color:#fff;
+  border:1px solid #444;
+  padding:10px;
+  border-radius:6px;
+  white-space:pre-wrap;
+  box-sizing:border-box;
+  resize: vertical;
+  min-height: 100px;
+}
+.toolbar{display:flex;gap:10px;margin:10px 0}
+button{color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:600;transition:background-color .2s ease,transform .1s ease}
+button:hover{filter:brightness(1.2)}
+button:active{transform:scale(0.98)}
+#cleanBtn{background:#007bff}
+#copyBtn{background:#5a6268}
+#clearBtn{background:#c82333}
+#demoBtn{background:#17a2b8}
+label{margin-right:15px;user-select:none;cursor:pointer}
+fieldset>label{
+    display: flex; /* Sorgt für saubere Ausrichtung */
+    align-items: center;
+    margin-bottom: 8px; /* Abstand zwischen Optionen */
+}
+input[type="checkbox"]{accent-color:#007bff;margin-right:5px;vertical-align:middle}
+fieldset{border:1px solid #444;border-radius:6px;padding:10px;margin-bottom:10px}
+legend{padding:0 6px;color:#009fff;font-weight:600}
+select{background:#2e2e2e;color:#fff;border:1px solid #555;padding:5px;border-radius:6px;accent-color:#007bff;width:100%;box-sizing:border-box;}
+#output{height:200px}
+#detectedLang{margin-left:10px;color:#aaa;display: block; margin-top: 5px;}
+.status{font-weight:bold;margin-left:8px}
+.status.ok{color:#0f0}
+.status.warn{color:#ff0}
+.status.err{color:#f33}
+.warning{color:#ffb347;font-weight:bold;margin-left:10px;display: block; margin-top: 5px;}
+.stats{color:#8af;font-style:italic;margin-left:10px;display: block; margin-top: 5px;}
+.emojiSub label{display:block;margin-left:25px;padding:2px 0}
+
+/* CSS für das Logo in der Überschrift */
+#header-logo {
+  vertical-align: middle;
+  margin-right: 10px;
+  width: 200px;
+  height: auto;
+}
+h2#uiTitle {
+  display: flex;
+  align-items: center;
+}
+
+/* === NEUES ZWEISPALTIGES LAYOUT === */
+.main-container {
+    display: flex;
+    flex-wrap: wrap; /* Für kleinere Bildschirme */
+    gap: 20px;
+}
+.left-pane {
+    flex-grow: 1;
+    flex-basis: 600px; /* Textfelder bekommen mehr Platz */
+    min-width: 60%;
+}
+.right-pane {
+    flex-grow: 1;
+    flex-basis: 300px; /* Optionen-Spalte */
+    min-width: 280px;
+}
+/* Anpassung für die Sprach-Fieldset-Elemente */
+#legendLang + * {
+    margin-bottom: 8px;
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@dardanisufi95/franc-bundle@1.0.2/dist/franc.min.js"></script>
+</head>
+<body>
+
+<h2 id="uiTitle">
+<div class="input-container">
+  <img id="header-logo" src="bytebadger.jpg" 
+  alt="ByteBadger Logo">
+</div>
+<em> ByteBadger - Bite by byte, from mess to bright  </em>
+</h2> 
+
+<div class="main-container">
+
+    <div class="left-pane">
+        <textarea id="input"></textarea>
+
+        <div class="toolbar">
+          <button id="cleanBtn"></button>
+          <button id="copyBtn"></button>
+          <button id="clearBtn"></button>
+          <button id="demoBtn"></button> 
+        </div>
+        
+        <textarea id="output"></textarea>
+    </div>
+    
+    <div class="right-pane">
+        <fieldset>
+          <legend id="legendOptions"></legend>
+          <label><input type="checkbox" id="chkFixEncoding"><span id="lblEncoding"></span></label>
+          <label><input type="checkbox" id="unicodeChk"><span id="lblUnicode"></span></label>
+          <label><input type="checkbox" id="specialChk"><span id="lblSpecial"></span></label>
+          <label><input type="checkbox" id="dblSpaceChk"><span id="lblDblspace"></span></label>
+          <label><input type="checkbox" id="mathChk"><span id="lblMath"></span></label>
+          <label><input type="checkbox" id="techChk"><span id="lblTech"></span></label>
+        </fieldset>
+        
+        <fieldset>
+          <legend id="legendEmoji"></legend>
+          <label><input type="checkbox" id="emojiRemove"><span id="lblEmojiRemove"></span></label>
+          <div class="emojiSub">
+            <label><input type="checkbox" class="emojiOpt" value="faces" disabled><span id="lblFaces"></span></label>
+            <label><input type="checkbox" class="emojiOpt" value="symbols" disabled><span id="lblSymbols"></span></label>
+            <label><input type="checkbox" class="emojiOpt" value="flags" disabled><span id="lblFlags"></span></label>
+          </div>
+        </fieldset>
+        
+        <fieldset>
+          <legend id="legendLang"></legend>
+          <select id="modeSelect">
+            <option value="auto">Auto (erkennen)</option>
+            <option value="manual">Manuell wählen</option>
+            <option value="disabled">Deaktiviert</option>
+          </select>
+          <select id="langSelect" disabled>
+            <option value="deu">Deutsch</option>
+            <option value="eng">English</option>
+          </select>
+          <select id="uiLang">
+            <option value="de">🇩🇪 Deutsch</option>
+            <option value="en">🇬🇧 English</option>
+          </select>
+          <div>
+            <span id="detectedLang"></span>
+            <span id="statusDot" class="status">🔴</span>
+          </div>
+          <span id="warnMsg" class="warning"></span>
+          <span id="statsMsg" class="stats"></span>
+        </fieldset>
+    </div>
+    
+</div> <script>
+// ==== eingebaute Sprachdaten ====
+const EMBEDDED_STRINGS = {
+  de: {
+    title:"Text Cleanup Tool 4.5",
+    placeholder_input:"Hier deinen Text einfügen...",
+    placeholder_output:"Bereinigter Text erscheint hier...",
+    btn_clean:"CleanText",
+    btn_copy:"Kopieren",
+    btn_copied:"Kopiert!",
+    btn_clear:"Leeren",
+    btn_demo:"Demo",
+    legend_options:"Optionen",
+    encoding_fix:"Zeichenkodierung korrigieren", 
+    unicode_remove:"Unicode entfernen",
+    special_replace:"Sonderzeichen ersetzen",
+    dblspace_remove:"Doppelte Leerzeichen entfernen",
+    math_replace:"Mathematische Buchstaben ersetzen",
+    tech_keep:"Technik / Formelzeichen beibehalten",
+    emoji_legend:"Emoji-Filter",
+    emoji_remove:"Alle Emojis entfernen",
+    emoji_faces:"😊 Gesichter beibehalten",
+    emoji_symbols:"❤️ Symbole beibehalten",
+    emoji_flags:"🏳️‍🌈 Flaggen beibehalten",
+    lang_legend:"Sprache",
+    warn_unicode:"⚠ Unicode entfernen kann sprachtypische Zeichen löschen!",
+    stats_prefix: "📊 Statistik:",
+    stats_suffix: "bereinigt.",
+    stats_clean: "📊 Text war bereits sauber.",
+    stats_special: "Sonderzeichen",
+    stats_spaces: "Leerzeichen",
+    stats_math: "Mathe-Zeichen",
+    stats_emoji: "Emojis",
+    stats_unicode: "Unicode-Zeichen",
+    stats_lang: "Sprach-Zeichen"
+  },
+  en: {
+    title:"Text Cleanup Tool 4.5",
+    placeholder_input:"Paste your text here...",
+    placeholder_output:"Cleaned text will appear here...",
+    btn_clean:"Clean Text",
+    btn_copy:"Copy",
+    btn_copied:"Copied!",
+    btn_clear:"Clear",
+    btn_demo:"Demo",
+    legend_options:"Options",
+    encoding_fix:"Fix character encoding",
+    unicode_remove:"Remove Unicode",
+    special_replace:"Replace special characters",
+    dblspace_remove:"Remove double spaces",
+    math_replace:"Replace mathematical letters",
+    tech_keep:"Keep technical / formula symbols",
+    emoji_legend:"Emoji Filter",
+    emoji_remove:"Remove all emojis",
+    emoji_faces:"😊 Keep faces",
+    emoji_symbols:"❤️ Keep symbols",
+    emoji_flags:"🏳️´🌈 Keep flags",
+    lang_legend:"Language",
+    warn_unicode:"⚠ Removing Unicode may delete language-specific characters!",
+    stats_prefix: "📊 Statistics:",
+    stats_suffix: "cleaned.",
+    stats_clean: "📊 Text was already clean.",
+    stats_special: "special chars",
+    stats_spaces: "spaces",
+    stats_math: "math chars",
+    stats_emoji: "emojis",
+    stats_unicode: "unicode chars",
+    stats_lang: "language chars"
+  }
+};
+
+let STRINGS={};
+
+// ==== Sprachlade-System mit Fallback ====
+async function loadLanguage(lang="de"){
+  try{
+    const res=await fetch(`strings_${lang}.json`);
+    if(!res.ok) throw new Error("fetch failed");
+    STRINGS=await res.json();
+    console.log("✅ Loaded external language:",lang);
+  }catch{
+    console.warn("⚠ Using embedded language fallback:",lang);
+    STRINGS=EMBEDDED_STRINGS[lang]||EMBEDDED_STRINGS.en;
+  }
+  applyLanguage();
+}
+
+// ==== Sprache anwenden ====
+function applyLanguage(){
+  const s=STRINGS;
+  document.getElementById("input").placeholder=s.placeholder_input;
+  document.getElementById("output").placeholder=s.placeholder_output;
+  document.getElementById("cleanBtn").textContent=s.btn_clean;
+  document.getElementById("copyBtn").textContent=s.btn_copy;
+  document.getElementById("clearBtn").textContent=s.btn_clear;
+  document.getElementById("demoBtn").textContent=s.btn_demo; 
+  document.getElementById("legendOptions").textContent=s.legend_options;
+  document.getElementById("lblEncoding").textContent=" "+s.encoding_fix;
+  document.getElementById("lblUnicode").textContent=" "+s.unicode_remove;
+  document.getElementById("lblSpecial").textContent=" "+s.special_replace;
+  document.getElementById("lblDblspace").textContent=" "+s.dblspace_remove;
+  document.getElementById("lblMath").textContent=" "+s.math_replace;
+  document.getElementById("lblTech").textContent=" "+s.tech_keep;
+  document.getElementById("legendEmoji").textContent=s.emoji_legend;
+  document.getElementById("lblEmojiRemove").textContent=" "+s.emoji_remove;
+  document.getElementById("lblFaces").textContent=" "+s.emoji_faces;
+  document.getElementById("lblSymbols").textContent=" "+s.emoji_symbols;
+  document.getElementById("lblFlags").textContent=" "+s.emoji_flags;
+  document.getElementById("legendLang").textContent=s.lang_legend;
+}
+
+// ==== DEINE MOJIBAKE-FUNKTIONEN ====
+function buildFullMojibakeMap() {
+    console.time("buildFullMojibakeMap");
+    const encoder = new TextEncoder();
+    const map = {};
+
+    // Basis: Windows-1252 (Deutsch, Englisch, Französisch, Spanisch etc.)
+    const decoders = [
+        new TextDecoder("windows-1252"),
+        new TextDecoder("windows-1251"), // Kyrillisch
+        new TextDecoder("windows-1254"), // Türkisch 🇹🇷
+        new TextDecoder("iso-8859-1")    // Alt-Französisch 🇫🇷
+    ];
+
+    for (let code = 0x00A0; code <= 0xFFFF; code++) {
+        const ch = String.fromCharCode(code);
+        const utf8Bytes = encoder.encode(ch);
+
+        for (const decoder of decoders) {
+            try {
+                const broken = decoder.decode(utf8Bytes);
+                if (broken !== ch && !map[broken]) {
+                    map[broken] = ch;
+                }
+            } catch {}
+        }
+    }
+    console.timeEnd("buildFullMojibakeMap");
+    return map;
+}
+
+
+function fixMojibake(str, map) {
+    if (!/[ÃÂâ€ÐÑ]/.test(str)) return str; 
+    let result = str;
+    for (const bad in map) {
+        if (result.indexOf(bad) !== -1) { 
+            result = result.split(bad).join(map[bad]);
+        }
+    }
+    return result;
+}
+
+// === Map EINMAL beim Start der Seite erzeugen ===
+const _mojibakeMap = buildFullMojibakeMap();
+
+
+// ==== Cleanup-Logik ====
+const input=document.getElementById("input");
+const output=document.getElementById("output");
+const copyBtn=document.getElementById("copyBtn");
+const clearBtn=document.getElementById("clearBtn");
+const demoBtn=document.getElementById("demoBtn");
+const emojiRemove=document.getElementById("emojiRemove");
+const emojiOpts=document.querySelectorAll(".emojiOpt");
+const modeSelect=document.getElementById("modeSelect");
+const langSelect=document.getElementById("langSelect");
+const detectedLangEl=document.getElementById("detectedLang");
+const statusDot=document.getElementById("statusDot");
+const warnMsg=document.getElementById("warnMsg");
+const statsMsg=document.getElementById("statsMsg");
+const chkFixEncoding=document.getElementById("chkFixEncoding");
+const unicodeChk=document.getElementById("unicodeChk");
+const specialChk=document.getElementById("specialChk");
+const dblSpaceChk=document.getElementById("dblSpaceChk");
+const mathChk=document.getElementById("mathChk");
+const techChk=document.getElementById("techChk");
+let debounceTimer,detectedLangCode="";
+
+// Standardeinstellungen für Höhe
+const defaultSettings={
+    encodingFix:true, unicode:false,special:true,dblSpace:true,math:false,tech:true,emojiRemove:true,mode:"auto",
+    inputHeight:"200px", outputHeight:"200px" 
+};
+
+function loadSettings(){
+  const saved=JSON.parse(localStorage.getItem("cleanupSettings")||"{}");
+  const s={...defaultSettings,...saved};
+  chkFixEncoding.checked=s.encodingFix;
+  unicodeChk.checked=s.unicode;
+  specialChk.checked=s.special;
+  dblSpaceChk.checked=s.dblSpace;
+  mathChk.checked=s.math;
+  techChk.checked=s.tech;
+  emojiRemove.checked=s.emojiRemove;
+  modeSelect.value=s.mode;
+  emojiOpts.forEach(e=>{e.disabled=!emojiRemove.checked;});
+  langSelect.disabled=modeSelect.value!=="manual";
+  
+  // Höhe laden
+  input.style.height = s.inputHeight || defaultSettings.inputHeight;
+  output.style.height = s.outputHeight || defaultSettings.outputHeight;
+}
+function saveSettings(){
+  const s={
+      encodingFix:chkFixEncoding.checked, 
+      unicode:unicodeChk.checked,
+      special:specialChk.checked,
+      dblSpace:dblSpaceChk.checked,
+      math:mathChk.checked,
+      tech:techChk.checked,
+      emojiRemove:emojiRemove.checked,
+      mode:modeSelect.value,
+      inputHeight: input.style.height, 
+      outputHeight: output.style.height 
+  };
+  localStorage.setItem("cleanupSettings",JSON.stringify(s));
+}
+document.querySelectorAll("input[type=checkbox],select").forEach(el=>el.addEventListener("change",saveSettings));
+// Speicher-Listener für Resize
+input.addEventListener("mouseup", saveSettings);
+output.addEventListener("mouseup", saveSettings);
+
+
+const sysLang=navigator.language||"en";
+const sysLangMap={de:"deu",en:"eng",fr:"fra",tr:"tur",es:"spa"};
+const sysFallback=sysLangMap[sysLang.substring(0,2)]||"eng";
+
+const languageWhitelistBase = {
+  deu: /[^A-Za-zÄÖÜäöüß0-9 .,;:!?'"()\-\r\n=+\-*/<>@#%^_~|{}\[\]$]/g,
+  eng: /[^A-Za-z0-9 .,;:!?'"()\-\r\n=+\-*/<>@#%^_~|{}\[\]$]/g
+};
+const emojiSets={faces:/[\u{1F600}-\u{1F64F}]/gu,symbols:/[\u{1F300}-\u{1F5FF}]/gu,flags:/[\u{1F1E6}-\u{1F1FF}]/gu};
+let mathReplacementsMap = null; // Cache für die Map
+
+function getMathReplacements() {
+  if (mathReplacementsMap) return mathReplacementsMap;
+
+  mathReplacementsMap = {};
+  const ranges = [
+    [0x1D400, 0x41, 26], [0x1D41A, 0x61, 26], [0x1D434, 0x41, 26], [0x1D44E, 0x61, 26],
+    [0x1D468, 0x41, 26], [0x1D482, 0x61, 26], [0x1D49C, 0x41, 26], [0x1D4B6, 0x61, 26],
+    [0x1D4D0, 0x41, 26], [0x1D4EA, 0x61, 26], [0x1D504, 0x41, 26], [0x1D51E, 0x61, 26],
+    [0x1D538, 0x41, 26], [0x1D552, 0x61, 26], [0x1D56C, 0x41, 26], [0x1D586, 0x61, 26],
+    [0x1D5A0, 0x41, 26], [0x1D5BA, 0x61, 26], [0x1D5D4, 0x41, 26], [0x1D5EE, 0x61, 26],
+    [0x1D608, 0x41, 26], [0x1D622, 0x61, 26], [0x1D63C, 0x41, 26], [0x1D656, 0x61, 26],
+    [0x1D670, 0x41, 26], [0x1D68A, 0x61, 26]
+  ];
+
+  for (const [start, base, count] of ranges) {
+    for (let i = 0; i < count; i++) {
+      mathReplacementsMap[String.fromCodePoint(start + i)] = String.fromCharCode(base + i);
+    }
+  }
+  return mathReplacementsMap;
+}
+
+
+function cleanText(t, o, l, ea) {
+  // Encoding-Fix passiert jetzt VOR dieser Funktion
+  const stats = { special: 0, dblSpace: 0, math: 0, unicode: 0, emoji: 0, lang: 0 };
+  const lines = t.split(/\r?\n/);
+
+  const res = lines.map(line => {
+    let c = line;
+    
+    // 1. Sonderzeichen ersetzen
+    if (o.special) {
+      const m = {
+        '…': '...', '–': '-', '—': '-', '―': '-', '“': '"', '”': '"', '„': '"',
+        '‟': '"', '’': "'", '‘': "'", '‹': "'", '›': "'", '№': 'No', '•': '-',
+        '·': '-', '‣': '-', '⁃': '-', '\u200B': ' ', '\u200C': ' ', '\u200D': ' ',
+        '\uFEFF': ' ', '\u2060': ' ', '\u00A0': ' ', '\u202F': ' ', '\u180E': ' ',
+        '\u0009': ' ', '\u000B': ' ', '\u000C': ' '
+      };
+      // Effizienteres Ersetzen mit Zählung
+      for (const [k, v] of Object.entries(m)) {
+        const count = (c.match(new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+        if (count > 0) {
+          stats.special += count;
+          c = c.split(k).join(v);
+        }
+      }
+    }
+
+    // 2. Doppelte Leerzeichen entfernen
+    if (o.dblSpace) {
+      c = c.replace(/\s{2,}/g, () => {
+        stats.dblSpace++;
+        return ' ';
+      });
+    }
+
+    // 4. Mathematische Buchstaben ersetzen
+    if (o.math) {
+      const map = getMathReplacements();
+      c = c.replace(/[\uD835][\uDC00-\uDFFF]/g, ch => {
+        const replacement = map[ch] || ch;
+        if (replacement !== ch) {
+          stats.math++;
+        }
+        return replacement;
+      });
+    }
+
+    // 5. Unicode entfernen
+    if (o.unicode) {
+      c = c.replace(/[^\p{L}\p{N}\p{P}\p{S}\p{Z}\r\n]/gu, () => {
+        stats.unicode++;
+        return '';
+      });
+    }
+
+    // 6. Emoji-Entfernung
+    if (o.emojiRemove) {
+      const al = ea.map(v => emojiSets[v]);
+      if (ea.length === 0) {
+        c = c.replace(/[\p{Extended_Pictographic}]/gu, () => {
+          stats.emoji++;
+          return '';
+        });
+      } else {
+        c = c.replace(/[\p{Extended_Pictographic}]/gu, e => {
+          for (const r of al) if (e.match(r)) return e;
+          stats.emoji++; // Zähle nur entfernte
+          return '';
+        });
+      }
+    }
+
+    // 7. Sprachfilter (dynamisch)
+    if (l && l !== 'disabled' && languageWhitelistBase[l]) {
+      let regexSource = languageWhitelistBase[l].source;
+      if (o.tech) {
+        regexSource = regexSource.replace(/]\$/, ']€£¥²³°µ±÷×$');
+      }
+      const filterRegex = new RegExp(regexSource, 'g');
+      c = c.replace(filterRegex, () => {
+        stats.lang++;
+        return '';
+      });
+    }
+
+    return c;
+  });
+
+  return { cleanedText: res.join('\r\n'), stats: stats };
+}
+
+
+function detectLanguage(t){
+  if(!t.trim()){detectedLangCode="";detectedLangEl.textContent="";statusDot.textContent="🔴";statusDot.className="status err";return;}
+  try{
+    const f=(typeof franc==="function")?franc:(franc&&franc.franc)?franc.franc:null;
+    if(!f)throw new Error("franc not found");
+    if(t.length<80){detectedLangCode=sysFallback;detectedLangEl.textContent=`(Fallback: ${sysFallback})`;statusDot.textContent="🟡";statusDot.className="status warn";return;}
+    const ranked=francAll(t);
+    let lang=ranked[0][0];
+    if(/ä|ö|ü|ß/.test(t))lang="deu";
+    else if(/é|à|ç|è/.test(t))lang="fra";
+    detectedLangCode=(lang!=="und"&&languageWhitelistBase[lang])?lang:sysFallback;
+    detectedLangEl.textContent=`Erkannt: ${detectedLangCode}`;
+    statusDot.textContent=(detectedLangCode===sysFallback&&lang!==sysFallback)?"🟡":"🟢";
+    statusDot.className=(detectedLangCode===sysFallback&&lang!==sysFallback)?"status warn":"status ok";
+  }catch(e){detectedLangCode=sysFallback;detectedLangEl.textContent=`(Fehler → ${sysFallback})`;statusDot.textContent="🟡";statusDot.className="status warn";}
+}
+
+// Auto-Detection nutzt jetzt deine fixMojibake-Funktion
+input.addEventListener("input",()=>{
+    clearTimeout(debounceTimer);
+    if(modeSelect.value==="auto") {
+        debounceTimer=setTimeout(()=>{
+            let textToDetect = input.value;
+            if (chkFixEncoding.checked) {
+                textToDetect = fixMojibake(textToDetect, _mojibakeMap); 
+            }
+            detectLanguage(textToDetect);
+        }, 2000);
+    }
+});
+
+modeSelect.addEventListener("change",()=>{const v=modeSelect.value;langSelect.disabled=v!=="manual";detectedLangEl.textContent=v==="auto"?"(automatische Erkennung aktiv)":v==="manual"?"(manuelle Auswahl aktiv)":"(Spracherkennung deaktiviert)";statusDot.textContent="🔴";statusDot.className="status err";saveSettings();});
+
+// Clean-Button nutzt jetzt deine fixMojibake-Funktion
+document.getElementById("cleanBtn").onclick=()=>{
+  
+  // 1. Text holen und Encoding-Fix als ERSTES anwenden
+  let textToClean = input.value;
+  if (chkFixEncoding.checked) {
+      textToClean = fixMojibake(textToClean, _mojibakeMap); 
+  }
+
+  // 2. Optionen holen
+  const o={
+      unicode: unicodeChk.checked,
+      special: specialChk.checked,
+      dblSpace: dblSpaceChk.checked,
+      emojiRemove: emojiRemove.checked,
+      math: mathChk.checked,
+      tech: techChk.checked
+  };
+  
+  warnMsg.textContent='';
+  statsMsg.textContent='';
+  if(o.unicode&&modeSelect.value==='auto')warnMsg.textContent=STRINGS.warn_unicode;
+  
+  // 3. Sprache bestimmen (jetzt mit dem korrigierten Text)
+  let l='';
+  if(modeSelect.value==='manual')l=langSelect.value;
+  else if(modeSelect.value==='auto'){
+      if(!detectedLangCode || input.value.length < 80) detectLanguage(textToClean); 
+      l=detectedLangCode||sysFallback;
+  }
+  else l='disabled';
+  
+  const ea=Array.from(document.querySelectorAll('.emojiOpt:checked')).map(c=>c.value);
+  
+  // 4. Bereinigung mit dem korrigierten Text starten
+  const result = cleanText(textToClean, o, l, ea);
+  output.value = result.cleanedText;
+
+  // 5. Statistik anzeigen
+  const s = result.stats;
+  const parts = [];
+  if (s.special > 0) parts.push(`${s.special} ${STRINGS.stats_special}`);
+  if (s.dblSpace > 0) parts.push(`${s.dblSpace} ${STRINGS.stats_spaces}`);
+  if (s.math > 0) parts.push(`${s.math} ${STRINGS.stats_math}`);
+  if (s.emoji > 0) parts.push(`${s.emoji} ${STRINGS.stats_emoji}`);
+  if (s.unicode > 0) parts.push(`${s.unicode} ${STRINGS.stats_unicode}`);
+  if (s.lang > 0) parts.push(`${s.lang} ${STRINGS.stats_lang}`);
+
+  if (parts.length > 0) {
+    statsMsg.textContent = `${STRINGS.stats_prefix} ${parts.join(', ')} ${STRINGS.stats_suffix}`;
+  } else if (input.value.length > 0) {
+    statsMsg.textContent = STRINGS.stats_clean;
+  }
+};
+
+copyBtn.onclick = () => {
+  const textToCopy = output.value;
+  if (!textToCopy) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = STRINGS.btn_copied || "Kopiert!";
+        setTimeout(() => { copyBtn.textContent = originalText; }, 2000);
+      })
+      .catch(err => {
+        console.warn("Async copy failed, falling back.", err);
+        output.select();
+        document.execCommand("copy"); // Fallback
+      });
+  } else {
+    console.warn("Clipboard API not available, falling back.");
+    output.select();
+    document.execCommand("copy"); // Fallback
+  }
+};
+
+clearBtn.onclick=()=>{
+  input.value='';
+  output.value='';
+  detectedLangEl.textContent='';
+  statsMsg.textContent='';
+  warnMsg.textContent='';
+  statusDot.textContent='🔴';
+  statusDot.className='status err';
+};
+
+// Demo-Button-Logik
+const DEMO_TEXT = `Hello Ã¤nd welcome to the ByteBadger test!  
+This text is Ã¶Ã¶Ã¶Ã¼ber-corrupted — it includes mixed encodings, smart quotes (“like these”), and dashes – — ―.  
+We’ve got European Mojibake (Ã¤, Ã¶, Ã¼, ÃŸ), French touch (Ã§a va ?), Cyrillic (ÐŸÑ€Ð¸Ð²ÐµÑ‚ = Hello), and Greek (Î›Î¬Î¼Î²Î´Î± = Lambda).  
+There are also symbols like â‚¬, Â§, Â°, Âµ, Â©, and Â® everywhere!  
+
+Technical stuff: 25Â°C, 50ÂµF, E = mc², and math letters 𝑥 + 𝑦 = ℤ.  
+Extra spaces  and non-breaking ones  are sprinkled throughout.  
+Emojis should be handled 😊🚀❤️🇩🇪 — or removed, depending on settings.  
+Watch out for hidden zero-width ​spaces, soft hyphens­, and weird combining marks.  
+
+file:///C:/bytebadger.jpg is a fake link to test path cleaning.  
+Finally, here’s an ellipsisâ€¦ and a trademark symbolâ„¢ to finish the chaos.  
+Good luck ByteBadger — bite by byte, from mess to bright!
+`;
+
+demoBtn.onclick = () => {
+    input.value = DEMO_TEXT;
+    
+    // Manuell die Spracherkennung auslösen, wie bei der Eingabe
+    clearTimeout(debounceTimer);
+    if (modeSelect.value === "auto") {
+        let textToDetect = input.value;
+        if (chkFixEncoding.checked) {
+            textToDetect = fixMojibake(textToDetect, _mojibakeMap); 
+        }
+        detectLanguage(textToDetect);
+    }
+};
+
+document.getElementById("uiLang").addEventListener("change",e=>{
+  const lang=e.target.value;
+  localStorage.setItem("uiLang",lang);
+  loadLanguage(lang);
+});
+
+loadSettings();
+loadLanguage(localStorage.getItem("uiLang")||"de");
+</script>
+</body>
+</html>
+}
