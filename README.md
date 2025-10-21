@@ -1,10 +1,10 @@
 # <p align="center">
   <img src="https://raw.githubusercontent.com/habanada/ByteBadger/refs/heads/main/bytebadger.jpg" 
        alt="ByteBadger Logo" width="300">
-</p>
+</p>   <em>ByteBadger – Bite by byte, from mess to bright.</em>
 
 <p align="center">
-  <em>ByteBadger – Bite by byte, from mess to bright.</em>
+
 </p>
  ByteBadger - Text Cleanup Tool
 
